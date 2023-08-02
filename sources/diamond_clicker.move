@@ -48,12 +48,16 @@ module diamond_clicker::game {
 
     public fun initialize_game(account: &signer) {
         // move_to account with new GameStore
+        let game_store = GameStore { diamonds: 0, upgrades: Vec::new(), last_claimed_timestamp_seconds: 0 };
+        move_to(account, game_store);
     }
 
     public entry fun click(account: &signer) acquires GameStore {
         // check if GameStore does not exist - if not, initialize_game
+        assert!(exists<GameStore>(account), E_NOT_INITIALIZED);
 
-        // increment game_store.diamonds by +1
+        let game_store = borrow_global_mut<GameStore>(account);
+        game_store.diamonds = game_store.diamonds + 1;
     }
 
     fun get_unclaimed_diamonds(account_address: address, current_timestamp_seconds: u64): u64 acquires GameStore {
@@ -63,8 +67,15 @@ module diamond_clicker::game {
     }
 
     fun claim(account_address: address) acquires GameStore {
-        // set game_store.diamonds to current diamonds + unclaimed_diamonds
+        let amount = get_diamonds_per_minute(account_address);
+        // let now_secs = timestamp::now_seconds();
+
+        let game_store = borrow_global_mut<GameStore>(account);
         // set last_claimed_timestamp_seconds to the current timestamp in seconds
+        game_store.last_claimed_timestamp_seconds = timestamp::now_seconds();
+
+        // set game_store.diamonds to current diamonds + unclaimed_diamonds
+        game_store.diamonds = game_store.diamonds + amount; 
     }
 
     public entry fun upgrade(account: &signer, upgrade_index: u64, upgrade_amount: u64) acquires GameStore {
@@ -84,7 +95,8 @@ module diamond_clicker::game {
 
     #[view]
     public fun get_diamonds(account_address: address): u64 acquires GameStore {
-        // return game_store.diamonds + unclaimed_diamonds
+        let game_store = borrow_global_mut<GameStore>(account);
+        return game_store.diamonds;
     }
 
     #[view]
